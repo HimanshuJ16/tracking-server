@@ -11,20 +11,13 @@ const PORT = process.env.PORT || 8080;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
 
 // --- Middleware ---
-
-// Enable CORS for web client
-app.use(cors({
-  origin: CLIENT_URL
-}));
-
-// Parse JSON bodies
+app.use(cors({ origin: CLIENT_URL }));
 app.use(express.json());
 
 // --- Socket.IO Setup ---
-
 const io = new Server(server, {
   cors: {
-    origin: CLIENT_URL, // Allow connections from your web app
+    origin: CLIENT_URL,
     methods: ["GET", "POST"]
   }
 });
@@ -32,7 +25,6 @@ const io = new Server(server, {
 io.on("connection", (socket) => {
   console.log(`Client connected: ${socket.id}`);
 
-  // Web client subscribes to a trip
   socket.on("start_tracking", ({ bookingId }) => {
     if (bookingId) {
       console.log(`Client ${socket.id} is subscribing to trip: ${bookingId}`);
@@ -40,7 +32,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Web client unsubscribes
   socket.on("stop_tracking", ({ bookingId }) => {
      if (bookingId) {
       console.log(`Client ${socket.id} is unsubscribing from trip: ${bookingId}`);
@@ -53,12 +44,31 @@ io.on("connection", (socket) => {
   });
 });
 
-// --- HTTP Route for React Native App ---
-
+// --- NEW HELPER FUNCTION ---
 /**
- * This endpoint receives location updates from the mobile app.
- * It then broadcasts this location to all subscribed web clients.
+ * Saves the location data to the main database API.
+ * This is "fire-and-forget" so it doesn't slow down the broadcast.
  */
+const saveToDatabase = async (tripId, location) => {
+  try {
+    const response = await fetch(`${CLIENT_URL}/api/trip/location?id=${tripId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(location),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error(`[DB_SAVE_ERROR] Failed to save location for trip ${tripId}:`, errorData);
+    } else {
+      console.log(`[DB_SAVE_SUCCESS] Saved location for trip ${tripId}`);
+    }
+  } catch (error) {
+    console.error(`[DB_SAVE_ERROR] Error saving to database:`, error);
+  }
+};
+
+// --- HTTP Route for React Native App ---
 app.post("/broadcast/location", (req, res) => {
   try {
     const { tripId, location } = req.body;
@@ -67,11 +77,14 @@ app.post("/broadcast/location", (req, res) => {
       return res.status(400).json({ success: false, error: "Missing tripId or location data" });
     }
 
-    // Broadcast the location to the specific trip room
+    // 1. Broadcast the location to the specific trip room (INSTANT)
     io.to(tripId).emit("new_location", location);
-    
     console.log(`[BROADCAST] Sent location for trip ${tripId}:`, location);
 
+    // 2. Save to database in the background (FIRE-AND-FORGET)
+    saveToDatabase(tripId, location);
+    
+    // Respond to the app immediately
     res.status(200).json({ success: true, message: "Location broadcasted" });
 
   } catch (error) {
@@ -81,7 +94,6 @@ app.post("/broadcast/location", (req, res) => {
 });
 
 // --- Start Server ---
-
 server.listen(PORT, () => {
   console.log(`Tracking server running on port ${PORT}`);
 });
