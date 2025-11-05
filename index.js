@@ -36,7 +36,6 @@ io.on("connection", (socket) => {
   socket.on("start_tracking", ({ bookingId }) => {
     if (bookingId) {
       console.log(`Client ${socket.id} is subscribing to trip: ${bookingId}`);
-      console.log(`Live Location: ${l}`);
       socket.join(bookingId);
     }
   });
