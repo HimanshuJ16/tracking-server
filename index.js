@@ -36,6 +36,7 @@ io.on("connection", (socket) => {
   socket.on("start_tracking", ({ bookingId }) => {
     if (bookingId) {
       console.log(`Client ${socket.id} is subscribing to trip: ${bookingId}`);
+      console.log(`Live Location: ${l}`);
       socket.join(bookingId);
     }
   });
@@ -70,7 +71,7 @@ app.post("/broadcast/location", (req, res) => {
     // Broadcast the location to the specific trip room
     io.to(tripId).emit("new_location", location);
     
-    console.log(`Broadcasting location for trip ${tripId}:`, location);
+    console.log(`[BROADCAST] Sent location for trip ${tripId}:`, location);
 
     res.status(200).json({ success: true, message: "Location broadcasted" });
 
