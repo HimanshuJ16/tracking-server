@@ -70,7 +70,7 @@ app.post("/broadcast/location", (req, res) => {
     // Broadcast the location to the specific trip room
     io.to(tripId).emit("new_location", location);
     
-    // console.log(`Broadcasting location for trip ${tripId}:`, location);
+    console.log(`Broadcasting location for trip ${tripId}:`, location);
 
     res.status(200).json({ success: true, message: "Location broadcasted" });
 
