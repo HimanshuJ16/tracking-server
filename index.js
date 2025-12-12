@@ -39,19 +39,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // --- NEW: Handle Direct Socket Updates (Uber-like) ---
-  socket.on("update_location", ({ bookingId, location }) => {
-    if (bookingId && location) {
-      // 1. Instant Broadcast to Web Dashboard
-      // The web client listens for "new_location"
-      socket.to(bookingId).emit("new_location", location);
-      console.log(`[SOCKET] Broadcasted location for ${bookingId}`, location);
-
-      // 2. Save to DB asynchronously (Fire-and-forget)
-      saveToDatabase(bookingId, location);
-    }
-  });
-
   socket.on("disconnect", () => {
     console.log(`Client disconnected: ${socket.id}`);
   });
