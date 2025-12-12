@@ -33,9 +33,22 @@ io.on("connection", (socket) => {
   });
 
   socket.on("stop_tracking", ({ bookingId }) => {
-     if (bookingId) {
+    if (bookingId) {
       console.log(`Client ${socket.id} is unsubscribing from trip: ${bookingId}`);
       socket.leave(bookingId);
+    }
+  });
+
+  // --- NEW: Handle Direct Socket Updates (Uber-like) ---
+  socket.on("update_location", ({ bookingId, location }) => {
+    if (bookingId && location) {
+      // 1. Instant Broadcast to Web Dashboard
+      // The web client listens for "new_location"
+      socket.to(bookingId).emit("new_location", location);
+      console.log(`[SOCKET] Broadcasted location for ${bookingId}`, location);
+
+      // 2. Save to DB asynchronously (Fire-and-forget)
+      saveToDatabase(bookingId, location);
     }
   });
 
@@ -83,7 +96,7 @@ app.post("/broadcast/location", (req, res) => {
 
     // 2. Save to database in the background (FIRE-AND-FORGET)
     saveToDatabase(tripId, location);
-    
+
     // Respond to the app immediately
     res.status(200).json({ success: true, message: "Location broadcasted" });
 
