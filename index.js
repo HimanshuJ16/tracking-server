@@ -42,6 +42,19 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log(`Client disconnected: ${socket.id}`);
   });
+
+  // --- NEW: Handle location updates directly via Socket ---
+  socket.on("update_location", ({ tripId, location }) => {
+    if (tripId && location) {
+      console.log(`[SOCKET_RX] Received location for trip ${tripId}:`, location);
+
+      // 1. Broadcast to the room (users-website listening)
+      socket.to(tripId).emit("new_location", location);
+
+      // 2. Save to database
+      saveToDatabase(tripId, location);
+    }
+  });
 });
 
 // --- NEW HELPER FUNCTION ---
