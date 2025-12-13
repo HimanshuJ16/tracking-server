@@ -44,12 +44,14 @@ io.on("connection", (socket) => {
   });
 
   // --- NEW: Handle location updates directly via Socket ---
-  socket.on("update_location", ({ tripId, location }) => {
+  socket.on("update_location", ({ tripId, bookingId, location }) => {
     if (tripId && location) {
-      console.log(`[SOCKET_RX] Received location for trip ${tripId}:`, location);
+      console.log(`[SOCKET_RX] Received location for trip ${tripId}${bookingId ? ` (Booking: ${bookingId})` : ""}:`, location);
 
       // 1. Broadcast to the room (users-website listening)
-      socket.to(tripId).emit("new_location", location);
+      // If bookingId is provided, use it (since website joins bookingId). Fallback to tripId.
+      const roomId = bookingId || tripId;
+      socket.to(roomId).emit("new_location", location);
 
       // 2. Save to database
       saveToDatabase(tripId, location);
