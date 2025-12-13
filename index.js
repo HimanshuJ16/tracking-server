@@ -44,17 +44,25 @@ io.on("connection", (socket) => {
   });
 
   // --- NEW: Handle location updates directly via Socket ---
-  socket.on("update_location", ({ tripId, bookingId, location }) => {
+  socket.on("update_location", (data) => {
+    console.log("[DEBUG] Raw update_location received:", data);
+    const { tripId, bookingId, location } = data;
+
     if (tripId && location) {
       console.log(`[SOCKET_RX] Received location for trip ${tripId}${bookingId ? ` (Booking: ${bookingId})` : ""}:`, location);
 
       // 1. Broadcast to the room (users-website listening)
       // If bookingId is provided, use it (since website joins bookingId). Fallback to tripId.
       const roomId = bookingId || tripId;
+      // DEBUG LOG
+      console.log(`[DEBUG] Broadcasting to room: ${roomId}`);
+
       socket.to(roomId).emit("new_location", location);
 
       // 2. Save to database
       saveToDatabase(tripId, location);
+    } else {
+      console.log("[DEBUG] Invalid payload:", data);
     }
   });
 });
